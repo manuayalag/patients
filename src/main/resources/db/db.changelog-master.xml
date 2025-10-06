@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- 
+    Este microservicio de pacientes usa la misma base de datos que el proyecto Clinica principal.
+    Las tablas ya están creadas por el changelog principal de Clinica.
+    
+    Si necesitas hacer cambios específicos para este microservicio, agrégalos aquí.
+    -->
+    
+    <!-- Ejemplo de changeset específico para el microservicio de pacientes
+    <changeSet id="patients-microservice-001" author="patients-team">
+        <comment>Configuraciones específicas del microservicio de pacientes</comment>
+        
+        <sql>
+            /* Ejemplo: Crear índices específicos para consultas del microservicio de pacientes */
+            CREATE INDEX IF NOT EXISTS idx_patients_email ON patients(email);
+            CREATE INDEX IF NOT EXISTS idx_prescriptions_patient_id ON prescriptions(patient_id);
+            CREATE INDEX IF NOT EXISTS idx_medications_prescription_id ON medications(prescription_id);
+        </sql>
+        
+        <rollback>
+            DROP INDEX IF EXISTS idx_patients_email;
+            DROP INDEX IF EXISTS idx_prescriptions_patient_id;
+            DROP INDEX IF EXISTS idx_medications_prescription_id;
+        </rollback>
+    </changeSet>
+    -->
+
+</databaseChangeLog>
