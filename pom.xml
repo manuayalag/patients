@@ -28,7 +28,7 @@
     </scm>
     <properties>
         <java.version>17</java.version>
-        <clinica.version>0.0.10-SNAPSHOT</clinica.version>
+        <clinica.version>0.0.11-SNAPSHOT</clinica.version>
     </properties>
     <dependencies>
         <!-- Spring Boot Starters -->
@@ -51,19 +51,19 @@
 
         <!-- Clinica Dependencies - Entities, DTOs, and OpenAPI -->
         <dependency>
-            <groupId>com.fiuni.clinica</groupId>
+            <groupId>com.fiuni.Clinica</groupId>
             <artifactId>Clinica</artifactId>
             <version>${clinica.version}</version>
             <classifier>entities</classifier>
         </dependency>
         <dependency>
-            <groupId>com.fiuni.clinica</groupId>
+            <groupId>com.fiuni.Clinica</groupId>
             <artifactId>Clinica</artifactId>
             <version>${clinica.version}</version>
             <classifier>dtos</classifier>
         </dependency>
         <dependency>
-            <groupId>com.fiuni.clinica</groupId>
+            <groupId>com.fiuni.Clinica</groupId>
             <artifactId>Clinica</artifactId>
             <version>${clinica.version}</version>
             <classifier>openapi</classifier>
@@ -85,6 +85,25 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.2.0</version>
+        </dependency>
+
+        <!-- Mapping Libraries -->
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>3.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
 
         <!-- Development Tools -->

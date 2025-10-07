@@ -22,21 +22,21 @@ public class PatientService {
     private final PatientRepository patientRepository;
     
     /**
-     * Obtener todos los pacientes con paginación
+     * Obtener todos los pacientes activos con paginación
      */
     @Transactional(readOnly = true)
     public Page<PatientDomain> getAllPatients(Pageable pageable) {
-        log.debug("Getting all patients with pagination: {}", pageable);
-        return patientRepository.findAll(pageable);
+        log.debug("Getting all active patients with pagination: {}", pageable);
+        return patientRepository.findByIsActiveTrue(pageable);
     }
     
     /**
-     * Obtener paciente por ID
+     * Obtener paciente activo por ID
      */
     @Transactional(readOnly = true)
     public Optional<PatientDomain> getPatientById(Integer id) {
-        log.debug("Getting patient by ID: {}", id);
-        return patientRepository.findById(id);
+        log.debug("Getting active patient by ID: {}", id);
+        return patientRepository.findByIdAndIsActiveTrue(id);
     }
     
     /**
@@ -45,7 +45,7 @@ public class PatientService {
     @Transactional(readOnly = true)
     public Optional<PatientDomain> getPatientByEmail(String email) {
         log.debug("Getting patient by email: {}", email);
-        return patientRepository.findByEmail(email);
+        return patientRepository.findByEmailAndIsActiveTrue(email);
     }
     
     /**
@@ -54,7 +54,7 @@ public class PatientService {
     @Transactional(readOnly = true)
     public Page<PatientDomain> searchPatientsByName(String name, Pageable pageable) {
         log.debug("Searching patients by name: {} with pagination: {}", name, pageable);
-        return patientRepository.findByNameContainingIgnoreCase(name, pageable);
+        return patientRepository.findByNameContainingIgnoreCaseAndIsActiveTrue(name, pageable);
     }
     
     /**
@@ -64,7 +64,7 @@ public class PatientService {
         log.debug("Creating new patient: {}", patient.getEmail());
         
         // Validar que el email no exista
-        if (patientRepository.findByEmail(patient.getEmail()).isPresent()) {
+        if (patientRepository.findByEmailAndIsActiveTrue(patient.getEmail()).isPresent()) {
             throw new RuntimeException("Ya existe un paciente con el email: " + patient.getEmail());
         }
         
@@ -77,7 +77,7 @@ public class PatientService {
     public PatientDomain updatePatient(Integer id, PatientDomain patientData) {
         log.debug("Updating patient with ID: {}", id);
         
-        PatientDomain existingPatient = patientRepository.findById(id)
+        PatientDomain existingPatient = patientRepository.findByIdAndIsActiveTrue(id)
                 .orElseThrow(() -> new RuntimeException("Paciente no encontrado con ID: " + id));
         
         // Actualizar campos disponibles en PatientDomain
@@ -95,15 +95,19 @@ public class PatientService {
     }
     
     /**
-     * Eliminar paciente (soft delete si está disponible, o hard delete)
+     * Eliminar paciente (soft delete - marca como inactivo)
      */
     public void deletePatient(Integer id) {
-        log.debug("Deleting patient with ID: {}", id);
+        log.debug("Soft deleting patient with ID: {}", id);
         
-        PatientDomain patient = patientRepository.findById(id)
+        PatientDomain patient = patientRepository.findByIdAndIsActiveTrue(id)
                 .orElseThrow(() -> new RuntimeException("Paciente no encontrado con ID: " + id));
         
-        patientRepository.delete(patient);
+        // Soft delete usando el campo isActive de PersonDomain
+        patient.setActive(false);
+        patientRepository.save(patient);
+        
+        log.info("Patient with ID {} successfully soft deleted (marked as inactive)", id);
     }
     
     /**
@@ -113,7 +117,7 @@ public class PatientService {
     public List<PrescriptionDomain> getPatientPrescriptions(Integer patientId) {
         log.debug("Getting prescriptions for patient ID: {}", patientId);
         
-        PatientDomain patient = patientRepository.findById(patientId)
+        PatientDomain patient = patientRepository.findByIdAndIsActiveTrue(patientId)
                 .orElseThrow(() -> new RuntimeException("Paciente no encontrado con ID: " + patientId));
         
         return patient.getPrescriptions();
@@ -124,6 +128,6 @@ public class PatientService {
      */
     @Transactional(readOnly = true)
     public boolean existsPatient(Integer id) {
-        return patientRepository.existsById(id);
+        return patientRepository.existsByIdAndActiveTrue(id);
     }
 }

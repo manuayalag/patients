@@ -6,29 +6,21 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
     <!-- 
-    Este microservicio de pacientes usa la misma base de datos que el proyecto Clinica principal.
-    Las tablas ya están creadas por el changelog principal de Clinica.
+    MICROSERVICIO DE PACIENTES - SIN CHANGESETS PROPIOS
     
-    Si necesitas hacer cambios específicos para este microservicio, agrégalos aquí.
-    -->
+    Este microservicio consume entidades del proyecto Clinica (commons) pero NO modifica la estructura de BD.
+    Todas las migraciones de schema se manejan en el proyecto Clinica principal.
     
-    <!-- Ejemplo de changeset específico para el microservicio de pacientes
-    <changeSet id="patients-microservice-001" author="patients-team">
-        <comment>Configuraciones específicas del microservicio de pacientes</comment>
-        
-        <sql>
-            /* Ejemplo: Crear índices específicos para consultas del microservicio de pacientes */
-            CREATE INDEX IF NOT EXISTS idx_patients_email ON patients(email);
-            CREATE INDEX IF NOT EXISTS idx_prescriptions_patient_id ON prescriptions(patient_id);
-            CREATE INDEX IF NOT EXISTS idx_medications_prescription_id ON medications(prescription_id);
-        </sql>
-        
-        <rollback>
-            DROP INDEX IF EXISTS idx_patients_email;
-            DROP INDEX IF EXISTS idx_prescriptions_patient_id;
-            DROP INDEX IF EXISTS idx_medications_prescription_id;
-        </rollback>
-    </changeSet>
+    RESPONSABILIDADES:
+    - Proyecto Clinica: Define entidades y maneja migraciones de schema
+    - Microservicio patients: Solo consume las entidades, NO modifica BD
+    
+    Si necesitas cambios en la estructura de BD:
+    1. Ve al proyecto Clinica (commons)
+    2. Modifica el PatientDomain (ejemplo: @Column(length=20))
+    3. Crea el changeset en el changelog principal de Clinica
+    4. Recompila y redistribuye el JAR
+    5. Actualiza la dependencia en este microservicio
     -->
 
 </databaseChangeLog>

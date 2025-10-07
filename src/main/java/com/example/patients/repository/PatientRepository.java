@@ -1,9 +1,9 @@
 package com.example.patients.repository;
 
+import com.example.patients.repository.base.IBaseRepository;
 import com.fiuni.clinica.domain.patient.PatientDomain;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -12,26 +12,34 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface PatientRepository extends JpaRepository<PatientDomain, Integer> {
+public interface PatientRepository extends IBaseRepository<PatientDomain> {
     
-    // Buscar paciente por email
-    Optional<PatientDomain> findByEmail(String email);
+    // Métodos específicos para PatientDomain (que usa isActive como boolean)
+    @Query("SELECT p FROM PatientDomain p WHERE p.id = :id AND p.isActive = true")
+    Optional<PatientDomain> findByIdAndIsActiveTrue(@Param("id") Integer id);
     
-    // Buscar pacientes por nombre (case insensitive)
-    @Query("SELECT p FROM PatientDomain p WHERE " +
+    @Query("SELECT p FROM PatientDomain p WHERE p.isActive = true")
+    Page<PatientDomain> findByIsActiveTrue(Pageable pageable);
+    
+    // Buscar paciente por email (solo activos)
+    @Query("SELECT p FROM PatientDomain p WHERE p.email = :email AND p.isActive = true")
+    Optional<PatientDomain> findByEmailAndIsActiveTrue(@Param("email") String email);
+    
+    // Buscar pacientes por nombre (case insensitive, solo activos)
+    @Query("SELECT p FROM PatientDomain p WHERE p.isActive = true AND (" +
            "LOWER(p.firstName) LIKE LOWER(CONCAT('%', :name, '%')) OR " +
-           "LOWER(p.lastName) LIKE LOWER(CONCAT('%', :name, '%'))")
-    Page<PatientDomain> findByNameContainingIgnoreCase(@Param("name") String name, Pageable pageable);
+           "LOWER(p.lastName) LIKE LOWER(CONCAT('%', :name, '%')))")
+    Page<PatientDomain> findByNameContainingIgnoreCaseAndIsActiveTrue(@Param("name") String name, Pageable pageable);
     
-    // Buscar pacientes por género
-    List<PatientDomain> findByGender(String gender);
+    // Buscar pacientes por género (solo activos)
+    @Query("SELECT p FROM PatientDomain p WHERE p.gender = :gender AND p.isActive = true")
+    List<PatientDomain> findByGenderAndIsActiveTrue(@Param("gender") String gender);
     
-    // Buscar pacientes activos (si tienes campo de estado)
-    // Comentado temporalmente - verificar que campos tiene PatientDomain en v0.0.10
-    // @Query("SELECT p FROM PatientDomain p WHERE p.active = true")
-    // Page<PatientDomain> findActivePatients(Pageable pageable);
+    // Buscar pacientes con prescripciones (solo activos)
+    @Query("SELECT DISTINCT p FROM PatientDomain p JOIN p.prescriptions pr WHERE p.isActive = true")
+    Page<PatientDomain> findPatientsWithPrescriptionsAndIsActiveTrue(Pageable pageable);
     
-    // Buscar pacientes con prescripciones
-    @Query("SELECT DISTINCT p FROM PatientDomain p JOIN p.prescriptions pr")
-    Page<PatientDomain> findPatientsWithPrescriptions(Pageable pageable);
+    // Verificar si existe un paciente activo por ID
+    @Query("SELECT COUNT(p) > 0 FROM PatientDomain p WHERE p.id = :id AND p.isActive = true")
+    boolean existsByIdAndActiveTrue(@Param("id") Integer id);
 }
