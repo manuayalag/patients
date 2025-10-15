@@ -37,7 +37,7 @@ public class MedicationMapper implements GenericMapper<MedicationDomain, Medicat
         entity.setContraindications(dto.getContraindications());
         
         // Configurar valores por defecto para nueva entidad
-        entity.setActive(true);
+        entity.setIsActive(true);
         
         return entity;
     }
@@ -54,7 +54,7 @@ public class MedicationMapper implements GenericMapper<MedicationDomain, Medicat
         
         // Mapear campos básicos
         dto.setId(entity.getId());
-        dto.setActive(entity.getActive());
+        dto.setActive(entity.getIsActive());
         dto.setVersion(entity.getVersion());
         
         // Mapear timestamps con zona horaria

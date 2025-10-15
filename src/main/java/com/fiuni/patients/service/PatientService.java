@@ -5,7 +5,6 @@ import com.fiuni.clinica.dto.generated.PatientRequest;
 import com.fiuni.clinica.dto.generated.PatientResponse;
 import com.fiuni.patients.mapper.PatientMapper;
 import com.fiuni.patients.repository.PatientRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,12 +15,17 @@ import java.util.Optional;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
-public class PatientService {
+public class PatientService extends AbstractBaseService<PatientDomain, PatientRequest, PatientResponse> {
 
-    private final PatientRepository patientRepository;
+    private final PatientRepository patientRepository; // keep for specialized queries
     private final PatientMapper patientMapper;
+
+    public PatientService(PatientRepository patientRepository, PatientMapper patientMapper) {
+        super(patientRepository, patientMapper);
+        this.patientRepository = patientRepository;
+        this.patientMapper = patientMapper;
+    }
 
     /**
      * Obtener todos los pacientes con paginación
@@ -30,7 +34,7 @@ public class PatientService {
     public Page<PatientResponse> getAllPatients(Pageable pageable) {
         log.info("Getting all patients with pagination: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
         
-        Page<PatientDomain> patients = patientRepository.findAllActive(pageable);
+        Page<PatientDomain> patients = patientRepository.findByIsActiveTrue(pageable);
         
         log.info("Found {} patients", patients.getTotalElements());
         
@@ -44,7 +48,7 @@ public class PatientService {
     public Optional<PatientResponse> getPatientById(Integer id) {
         log.info("Getting patient by ID: {}", id);
         
-        Optional<PatientDomain> patient = patientRepository.findByIdAndActiveTrue(id);
+        Optional<PatientDomain> patient = patientRepository.findByIdAndIsActiveTrue(id);
         
         if (patient.isPresent()) {
             log.info("Patient found with ID: {}", id);
@@ -75,7 +79,7 @@ public class PatientService {
     public Optional<PatientResponse> updatePatient(Integer id, PatientRequest request) {
         log.info("Updating patient with ID: {}", id);
         
-        Optional<PatientDomain> existingPatient = patientRepository.findByIdAndActiveTrue(id);
+        Optional<PatientDomain> existingPatient = patientRepository.findByIdAndIsActiveTrue(id);
         
         if (existingPatient.isPresent()) {
             PatientDomain patient = existingPatient.get();
@@ -97,7 +101,7 @@ public class PatientService {
     public boolean deletePatient(Integer id) {
         log.info("Deleting patient with ID: {}", id);
         
-        Optional<PatientDomain> patient = patientRepository.findByIdAndActiveTrue(id);
+        Optional<PatientDomain> patient = patientRepository.findByIdAndIsActiveTrue(id);
         
         if (patient.isPresent()) {
             PatientDomain patientToDelete = patient.get();
@@ -118,7 +122,13 @@ public class PatientService {
     @Transactional(readOnly = true)
     public List<PatientResponse> searchPatients(String firstName, String lastName, String document, String bloodType) {
         log.info("Searching patients with term: {}", firstName);
-        List<PatientDomain> patients = patientRepository.searchPatients(firstName);
+        // Usar el término de búsqueda más relevante
+        String searchTerm = firstName != null ? firstName : 
+                           lastName != null ? lastName : 
+                           document != null ? document : "";
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 1000);
+        org.springframework.data.domain.Page<PatientDomain> patientsPage = patientRepository.searchByTerm(searchTerm, pageable);
+        List<PatientDomain> patients = patientsPage.getContent();
         log.info("Search found {} patients", patients.size());
         return patientMapper.toResponseList(patients);
     }
@@ -129,7 +139,7 @@ public class PatientService {
     @Transactional(readOnly = true)
     public long countActivePatients() {
         log.debug("Counting active patients");
-        return patientRepository.countActivePatients();
+        return patientRepository.count();
     }
     
     // ================== Controller Support Methods ==================

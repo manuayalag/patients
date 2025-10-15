@@ -53,7 +53,7 @@ public class PrescriptionMapper implements GenericMapper<PrescriptionDomain, Pre
         // El mapper solo prepara la entidad, el servicio debe buscar y asignar el patient
         
         // Configurar valores por defecto para nueva entidad
-        entity.setActive(true);
+        entity.setIsActive(true);
         entity.setCreatedDate(java.time.LocalDateTime.now());
         entity.setLastModified(java.time.LocalDateTime.now());
         
@@ -72,7 +72,7 @@ public class PrescriptionMapper implements GenericMapper<PrescriptionDomain, Pre
         
         // Mapear campos básicos
         dto.setId(entity.getId());
-        dto.setActive(entity.getActive());
+        dto.setActive(entity.getIsActive());
         dto.setVersion(entity.getVersion());
         
         // Mapear timestamps con zona horaria
@@ -126,7 +126,7 @@ public class PrescriptionMapper implements GenericMapper<PrescriptionDomain, Pre
         if (entity.getMedications() != null) {
             java.util.List<com.fiuni.clinica.dto.generated.PrescriptionMedicationResponse> medications = 
                 entity.getMedications().stream()
-                    .filter(prescriptionMed -> prescriptionMed.getActive()) // Solo medicamentos activos
+                    .filter(prescriptionMed -> prescriptionMed.getIsActive()) // Solo medicamentos activos
                     .map(prescriptionMed -> {
                         com.fiuni.clinica.dto.generated.PrescriptionMedicationResponse prescMedDto = 
                             new com.fiuni.clinica.dto.generated.PrescriptionMedicationResponse();
@@ -138,7 +138,7 @@ public class PrescriptionMapper implements GenericMapper<PrescriptionDomain, Pre
                         prescMedDto.setDuration(prescriptionMed.getDuration());
                         prescMedDto.setInstructions(prescriptionMed.getInstructions());
                         prescMedDto.setQuantity(prescriptionMed.getQuantity());
-                        prescMedDto.setActive(prescriptionMed.getActive());
+                        prescMedDto.setActive(prescriptionMed.getIsActive());
                         
                         // Mapear información COMPLETA del medicamento
                         if (prescriptionMed.getMedication() != null) {
@@ -154,7 +154,7 @@ public class PrescriptionMapper implements GenericMapper<PrescriptionDomain, Pre
                             medDto.setDescription(prescriptionMed.getMedication().getDescription());
                             medDto.setSideEffects(prescriptionMed.getMedication().getSideEffects());
                             medDto.setContraindications(prescriptionMed.getMedication().getContraindications());
-                            medDto.setActive(prescriptionMed.getMedication().getActive());
+                            medDto.setActive(prescriptionMed.getMedication().getIsActive());
                             
                             prescMedDto.setMedication(medDto);
                         }

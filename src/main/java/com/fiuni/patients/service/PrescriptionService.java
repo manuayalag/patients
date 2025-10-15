@@ -13,7 +13,6 @@ import com.fiuni.patients.mapper.PrescriptionMapper;
 import com.fiuni.patients.repository.PrescriptionRepository;
 import com.fiuni.patients.repository.PatientRepository;
 import com.fiuni.patients.repository.MedicationRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,15 +28,25 @@ import java.util.Optional;
  * Service para gestión de prescripciones
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 @Transactional
-public class PrescriptionService {
+public class PrescriptionService extends AbstractBaseService<PrescriptionDomain, PrescriptionRequest, PrescriptionResponse> {
 
     private final PrescriptionRepository prescriptionRepository;
     private final PatientRepository patientRepository;
     private final MedicationRepository medicationRepository;
     private final PrescriptionMapper prescriptionMapper;
+
+    public PrescriptionService(PrescriptionRepository prescriptionRepository,
+                               PatientRepository patientRepository,
+                               MedicationRepository medicationRepository,
+                               PrescriptionMapper prescriptionMapper) {
+        super(prescriptionRepository, prescriptionMapper);
+        this.prescriptionRepository = prescriptionRepository;
+        this.patientRepository = patientRepository;
+        this.medicationRepository = medicationRepository;
+        this.prescriptionMapper = prescriptionMapper;
+    }
 
     /**
      * Obtener todas las prescripciones con paginación
@@ -47,232 +56,13 @@ public class PrescriptionService {
         log.info("Getting all prescriptions with pagination: page={}, size={}", 
                 pageable.getPageNumber(), pageable.getPageSize());
         
-    Page<PrescriptionDomain> prescriptions = prescriptionRepository.findAllActive(pageable);
+    Page<PrescriptionDomain> prescriptions = prescriptionRepository.findByIsActiveTrue(pageable);
 
     log.info("Found {} prescriptions", prescriptions.getTotalElements());
 
     // Use toDto (non-deprecated) mapper method
     return prescriptions.map(prescriptionMapper::toDto);
     }
-
-    /**
-     * Obtener prescripción por ID
-        // Buscar prescripción
-        Optional<PrescriptionDomain> prescriptionOpt = prescriptionRepository.findByIdAndActiveTrue(prescriptionId);
-        if (!prescriptionOpt.isPresent()) {
-            throw new RuntimeException("Prescription not found with ID: " + prescriptionId);
-        }
-        
-        // Buscar medicamento
-        Optional<MedicationDomain> medicationOpt = medicationRepository.findByIdAndActiveTrue(medicationId);
-        if (!medicationOpt.isPresent()) {
-            throw new RuntimeException("Medication not found with ID: " + medicationId);
-        }
-        
-        PrescriptionDomain prescription = prescriptionOpt.get();
-        MedicationDomain medication = medicationOpt.get();
-        
-        // Verificar si la relación ya existe
-        boolean exists = prescription.getMedications().stream()
-                .anyMatch(pm -> pm.getMedication().getId().equals(medicationId));
-        
-        if (exists) {
-            log.warn("Medication {} is already associated with prescription {}", medicationId, prescriptionId);
-            return;
-        }
-        
-        // Crear nueva relación
-        PrescriptionMedicationDomain prescriptionMedication = new PrescriptionMedicationDomain();
-        prescriptionMedication.setPrescription(prescription);
-        prescriptionMedication.setMedication(medication);
-        prescriptionMedication.setActive(true);
-        
-        prescription.getMedications().add(prescriptionMedication);
-        prescriptionRepository.save(prescription);
-        
-        log.info("Medication {} successfully added to prescription {}", medicationId, prescriptionId);
-    }
-
-    /**
-     * Remover medicamento de prescripción
-     
-    public void removeMedicationFromPrescription(Integer prescriptionId, Integer medicationId) {
-        log.info("Removing medication ID {} from prescription ID {}", medicationId, prescriptionId);
-        
-        Optional<PrescriptionDomain> prescriptionOpt = prescriptionRepository.findByIdAndActiveTrue(prescriptionId);
-        if (!prescriptionOpt.isPresent()) {
-            throw new RuntimeException("Prescription not found with ID: " + prescriptionId);
-        }
-        
-        PrescriptionDomain prescription = prescriptionOpt.get();
-        
-        // Encontrar y remover la relación
-        boolean removed = prescription.getMedications().removeIf(pm -> 
-                pm.getMedication().getId().equals(medicationId));
-        
-        if (removed) {
-            prescriptionRepository.save(prescription);
-            log.info("Medication {} successfully removed from prescription {}", medicationId, prescriptionId);
-        } else {
-            log.warn("Medication {} was not associated with prescription {}", medicationId, prescriptionId);
-            throw new RuntimeException("Medication not associated with this prescription");
-        }
-    }
-    
-    // ================== Controller Support Methods ==================
-    
-    /**
-     * Convierte PaginationRequest a Pageable
-     
-    private Pageable createPageable(PaginationRequest paginationRequest) {
-        Sort.Direction direction = "DESC".equalsIgnoreCase(paginationRequest.getSortDirection()) 
-                ? Sort.Direction.DESC : Sort.Direction.ASC;
-        Sort sort = Sort.by(direction, paginationRequest.getSortBy());
-        return PageRequest.of(paginationRequest.getPage(), paginationRequest.getSize(), sort);
-    }
-
-    /**
-     * Obtener todas las prescripciones con PaginationRequest
-     
-    @Transactional(readOnly = true)
-    public Page<PrescriptionResponse> getAllPrescriptions(PaginationRequest paginationRequest) {
-        Pageable pageable = createPageable(paginationRequest);
-        return getAllPrescriptions(pageable);
-    }
-
-    /**
-     * Obtener prescripción por UUID (convierte a Integer)
-     
-    @Transactional(readOnly = true)
-    public PrescriptionResponse getPrescriptionById(UUID id) {
-        Integer integerId = id.hashCode();
-        Optional<PrescriptionResponse> prescription = getPrescriptionById(integerId);
-        
-        if (prescription.isPresent()) {
-            return prescription.get();
-        } else {
-            throw new RuntimeException("Prescription not found with ID: " + id);
-        }
-    }
-
-    /**
-     * Actualizar prescripción por UUID
-     
-    @Transactional
-    public PrescriptionResponse updatePrescription(UUID id, PrescriptionRequest request) {
-        Integer integerId = id.hashCode();
-        Optional<PrescriptionResponse> result = updatePrescription(integerId, request);
-        
-        if (result.isPresent()) {
-            return result.get();
-        } else {
-            throw new RuntimeException("Prescription not found or could not be updated with ID: " + id);
-        }
-    }
-
-    /**
-     * Eliminar prescripción por UUID
-     
-    @Transactional
-    public void deletePrescription(UUID id) {
-        Integer integerId = id.hashCode();
-        deletePrescription(integerId);
-    }
-
-    /**
-     * Obtener prescripciones por paciente UUID con paginación
-     
-    @Transactional(readOnly = true)
-    public Page<PrescriptionResponse> getPrescriptionsByPatient(UUID patientId, PaginationRequest paginationRequest) {
-        Integer integerPatientId = patientId.hashCode();
-        Pageable pageable = createPageable(paginationRequest);
-        return getPrescriptionsByPatient(integerPatientId, pageable);
-    }
-
-    /**
-     * Buscar prescripciones con término y paginación
-     
-    @Transactional(readOnly = true)
-    public Page<PrescriptionResponse> searchPrescriptions(String searchTerm, PaginationRequest paginationRequest) {
-        Pageable pageable = createPageable(paginationRequest);
-        Page<PrescriptionDomain> prescriptions = prescriptionRepository.searchByTerm(searchTerm, pageable);
-        return prescriptions.map(prescriptionMapper::toResponse);
-    }
-
-    // ================== PrescriptionMedication Specific Methods ==================
-
-    /**
-     * Actualizar una relación PrescriptionMedication específica
-     
-    public Optional<PrescriptionMedicationDomain> updatePrescriptionMedication(Integer prescriptionMedicationId, 
-            com.fiuni.clinica.dto.generated.PrescriptionMedicationRequest request) {
-        log.info("Updating prescription medication relationship with ID: {}", prescriptionMedicationId);
-        
-        // Buscar todas las prescripciones activas y encontrar la relación específica
-        Pageable pageable = PageRequest.of(0, 10000); // Obtener un número grande para buscar en todas
-        Page<PrescriptionDomain> allPrescriptionsPage = prescriptionRepository.findAllActive(pageable);
-        List<PrescriptionDomain> allPrescriptions = allPrescriptionsPage.getContent();
-        
-        for (PrescriptionDomain prescription : allPrescriptions) {
-            Optional<PrescriptionMedicationDomain> medicationToUpdate = prescription.getMedications().stream()
-                    .filter(pm -> pm.getId() != null && pm.getId().equals(prescriptionMedicationId))
-                    .findFirst();
-            
-            if (medicationToUpdate.isPresent()) {
-                PrescriptionMedicationDomain prescriptionMedication = medicationToUpdate.get();
-                
-                // Actualizar campos específicos de la relación (dosis, frecuencia, etc.)
-                // Nota: Ajusta estos campos según la estructura real de tu PrescriptionMedicationRequest
-                if (request.getDosage() != null) {
-                    prescriptionMedication.setDosage(request.getDosage());
-                }
-                if (request.getFrequency() != null) {
-                    prescriptionMedication.setFrequency(request.getFrequency());
-                }
-                if (request.getDuration() != null) {
-                    prescriptionMedication.setDuration(request.getDuration());
-                }
-                if (request.getInstructions() != null) {
-                    prescriptionMedication.setInstructions(request.getInstructions());
-                }
-                
-                prescriptionRepository.save(prescription);
-                log.info("Prescription medication relationship updated successfully with ID: {}", prescriptionMedicationId);
-                return Optional.of(prescriptionMedication);
-            }
-        }
-        
-        log.warn("Cannot update - Prescription medication relationship not found with ID: {}", prescriptionMedicationId);
-        return Optional.empty();
-    }
-
-    /**
-     * Obtener una relación PrescriptionMedication específica por ID
-     
-    @Transactional(readOnly = true)
-    public Optional<PrescriptionMedicationDomain> getPrescriptionMedicationById(Integer prescriptionMedicationId) {
-        log.info("Getting prescription medication relationship with ID: {}", prescriptionMedicationId);
-        
-        // Buscar todas las prescripciones activas y encontrar la relación específica
-        Pageable pageable = PageRequest.of(0, 10000); // Obtener un número grande para buscar en todas
-        Page<PrescriptionDomain> allPrescriptionsPage = prescriptionRepository.findAllActive(pageable);
-        List<PrescriptionDomain> allPrescriptions = allPrescriptionsPage.getContent();
-        
-        for (PrescriptionDomain prescription : allPrescriptions) {
-            Optional<PrescriptionMedicationDomain> found = prescription.getMedications().stream()
-                    .filter(pm -> pm.getId() != null && pm.getId().equals(prescriptionMedicationId))
-                    .findFirst();
-            
-            if (found.isPresent()) {
-                log.info("Prescription medication relationship found with ID: {}", prescriptionMedicationId);
-                return found;
-            }
-        }
-        
-        log.warn("Prescription medication relationship not found with ID: {}", prescriptionMedicationId);
-        return Optional.empty();
-    }
-    */
 
     // ================== MÉTODOS PÚBLICOS PARA EL CONTROLLER ==================
 
@@ -288,9 +78,9 @@ public class PrescriptionService {
         Page<PrescriptionDomain> prescriptions;
         
         if (patientId != null) {
-            prescriptions = prescriptionRepository.findByPatientIdAndActiveTrue(patientId, pageable);
+            prescriptions = prescriptionRepository.findByPatientIdAndIsActiveTrue(patientId, pageable);
         } else {
-            prescriptions = prescriptionRepository.findAllActive(pageable);
+            prescriptions = prescriptionRepository.findByIsActiveTrue(pageable);
         }
         
         log.info("Found {} prescriptions", prescriptions.getTotalElements());
@@ -304,7 +94,7 @@ public class PrescriptionService {
     public Optional<PrescriptionResponse> getPrescriptionById(Integer id) {
         log.info("Getting prescription by ID: {}", id);
         
-        Optional<PrescriptionDomain> prescription = prescriptionRepository.findByIdAndActiveTrue(id);
+        Optional<PrescriptionDomain> prescription = prescriptionRepository.findByIdAndIsActiveTrue(id);
         
         if (prescription.isPresent()) {
             log.info("Prescription found with ID: {}", id);
@@ -328,7 +118,7 @@ public class PrescriptionService {
         }
         
         // Buscar y verificar que el paciente existe
-        Optional<PatientDomain> patient = patientRepository.findByIdAndActiveTrue(request.getPatientId());
+        Optional<PatientDomain> patient = patientRepository.findByIdAndIsActiveTrue(request.getPatientId());
         if (!patient.isPresent()) {
             throw new RuntimeException("Patient not found with ID: " + request.getPatientId());
         }
@@ -353,7 +143,7 @@ public class PrescriptionService {
     public Optional<PrescriptionResponse> updatePrescription(Integer id, PrescriptionRequest request) {
         log.info("Updating prescription with ID: {}", id);
         
-        Optional<PrescriptionDomain> existingPrescription = prescriptionRepository.findByIdAndActiveTrue(id);
+        Optional<PrescriptionDomain> existingPrescription = prescriptionRepository.findByIdAndIsActiveTrue(id);
         
         if (existingPrescription.isPresent()) {
             PrescriptionDomain prescription = existingPrescription.get();
@@ -376,11 +166,11 @@ public class PrescriptionService {
     public boolean deletePrescription(Integer id) {
         log.info("Deleting prescription with ID: {}", id);
         
-        Optional<PrescriptionDomain> prescription = prescriptionRepository.findByIdAndActiveTrue(id);
+        Optional<PrescriptionDomain> prescription = prescriptionRepository.findByIdAndIsActiveTrue(id);
         
         if (prescription.isPresent()) {
             PrescriptionDomain prescriptionToDelete = prescription.get();
-            prescriptionToDelete.setActive(false);
+            prescriptionToDelete.setIsActive(false);
             prescriptionRepository.save(prescriptionToDelete);
             
             log.info("Prescription deleted successfully with ID: {}", id);
@@ -399,7 +189,7 @@ public class PrescriptionService {
         log.info("Getting prescriptions for patient ID: {}", patientId);
         
         Pageable pageable = PageRequest.of(0, 1000); // Obtener todas las prescripciones del paciente
-        Page<PrescriptionDomain> prescriptions = prescriptionRepository.findByPatientIdAndActiveTrue(patientId, pageable);
+        Page<PrescriptionDomain> prescriptions = prescriptionRepository.findByPatientIdAndIsActiveTrue(patientId, pageable);
         
         log.info("Found {} prescriptions for patient ID: {}", prescriptions.getTotalElements(), patientId);
         return prescriptions.getContent().stream()
@@ -433,13 +223,13 @@ public class PrescriptionService {
         log.info("Adding medication ID {} to prescription ID {}", medicationId, prescriptionId);
         
         // Buscar prescripción
-        Optional<PrescriptionDomain> prescriptionOpt = prescriptionRepository.findByIdAndActiveTrue(prescriptionId);
+        Optional<PrescriptionDomain> prescriptionOpt = prescriptionRepository.findByIdAndIsActiveTrue(prescriptionId);
         if (!prescriptionOpt.isPresent()) {
             throw new RuntimeException("Prescription not found with ID: " + prescriptionId);
         }
         
         // Buscar medicamento
-        Optional<MedicationDomain> medicationOpt = medicationRepository.findByIdAndActiveTrue(medicationId);
+        Optional<MedicationDomain> medicationOpt = medicationRepository.findByIdAndIsActiveTrue(medicationId);
         if (!medicationOpt.isPresent()) {
             throw new RuntimeException("Medication not found with ID: " + medicationId);
         }
@@ -462,7 +252,7 @@ public class PrescriptionService {
         PrescriptionMedicationDomain prescriptionMedication = new PrescriptionMedicationDomain();
         prescriptionMedication.setPrescription(prescription);
         prescriptionMedication.setMedication(medication);
-        prescriptionMedication.setActive(true);
+        prescriptionMedication.setIsActive(true);
         prescriptionMedication.setCreatedDate(java.time.LocalDateTime.now());
         prescriptionMedication.setLastModified(java.time.LocalDateTime.now());
         
@@ -541,7 +331,7 @@ public class PrescriptionService {
         log.info("Removing medication ID {} from prescription ID {}", medicationId, prescriptionId);
         
         // Buscar prescripción
-        Optional<PrescriptionDomain> prescriptionOpt = prescriptionRepository.findByIdAndActiveTrue(prescriptionId);
+        Optional<PrescriptionDomain> prescriptionOpt = prescriptionRepository.findByIdAndIsActiveTrue(prescriptionId);
         if (!prescriptionOpt.isPresent()) {
             throw new RuntimeException("Prescription not found with ID: " + prescriptionId);
         }
@@ -555,7 +345,7 @@ public class PrescriptionService {
         
         // Encontrar y marcar como inactiva la relación específica
         Optional<PrescriptionMedicationDomain> prescriptionMedicationOpt = prescription.getMedications().stream()
-                .filter(pm -> pm.getActive() && pm.getMedication().getId().equals(medicationId))
+                .filter(pm -> pm.getIsActive() && pm.getMedication().getId().equals(medicationId))
                 .findFirst();
         
         if (!prescriptionMedicationOpt.isPresent()) {
@@ -564,7 +354,7 @@ public class PrescriptionService {
         }
         
         PrescriptionMedicationDomain prescriptionMedication = prescriptionMedicationOpt.get();
-        prescriptionMedication.setActive(false);
+        prescriptionMedication.setIsActive(false);
         prescriptionMedication.setLastModified(java.time.LocalDateTime.now());
         
         prescriptionRepository.save(prescription);
@@ -580,7 +370,7 @@ public class PrescriptionService {
     public List<PrescriptionMedicationResponse> getPrescriptionMedicationsList(Integer prescriptionId) {
         log.info("Getting medications list for prescription ID: {}", prescriptionId);
         
-        Optional<PrescriptionDomain> prescriptionOpt = prescriptionRepository.findByIdAndActiveTrue(prescriptionId);
+        Optional<PrescriptionDomain> prescriptionOpt = prescriptionRepository.findByIdAndIsActiveTrue(prescriptionId);
         if (!prescriptionOpt.isPresent()) {
             throw new RuntimeException("Prescription not found with ID: " + prescriptionId);
         }
@@ -593,7 +383,7 @@ public class PrescriptionService {
         }
         
         List<PrescriptionMedicationResponse> responseList = prescription.getMedications().stream()
-                .filter(PrescriptionMedicationDomain::getActive)
+                .filter(PrescriptionMedicationDomain::getIsActive)
                 .map(prescriptionMedication -> {
                     PrescriptionMedicationResponse response = new PrescriptionMedicationResponse();
                     response.setId(prescriptionMedication.getId());
@@ -629,7 +419,7 @@ public class PrescriptionService {
         log.info("Updating prescription-medication relationship: prescription ID: {}, medication ID: {}", 
                 prescriptionId, medicationId);
         
-        Optional<PrescriptionDomain> prescriptionOpt = prescriptionRepository.findByIdAndActiveTrue(prescriptionId);
+        Optional<PrescriptionDomain> prescriptionOpt = prescriptionRepository.findByIdAndIsActiveTrue(prescriptionId);
         if (!prescriptionOpt.isPresent()) {
             throw new RuntimeException("Prescription not found with ID: " + prescriptionId);
         }
@@ -638,7 +428,7 @@ public class PrescriptionService {
         
         // Encontrar la relación específica
         Optional<PrescriptionMedicationDomain> prescriptionMedicationOpt = prescription.getMedications().stream()
-                .filter(pm -> pm.getActive() && pm.getMedication().getId().equals(medicationId))
+                .filter(pm -> pm.getIsActive() && pm.getMedication().getId().equals(medicationId))
                 .findFirst();
         
         if (!prescriptionMedicationOpt.isPresent()) {

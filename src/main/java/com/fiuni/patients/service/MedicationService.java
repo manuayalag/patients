@@ -5,7 +5,6 @@ import com.fiuni.clinica.dto.generated.MedicationRequest;
 import com.fiuni.clinica.dto.generated.MedicationResponse;
 import com.fiuni.patients.mapper.MedicationMapper;
 import com.fiuni.patients.repository.MedicationRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,12 +18,17 @@ import java.util.Optional;
  * Service para gestión de medicamentos
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
-public class MedicationService {
+public class MedicationService extends AbstractBaseService<MedicationDomain, MedicationRequest, MedicationResponse> {
 
-    private final MedicationRepository medicationRepository;
+    private final MedicationRepository medicationRepository; // keep for specialized queries
     private final MedicationMapper medicationMapper;
+
+    public MedicationService(MedicationRepository medicationRepository, MedicationMapper medicationMapper) {
+        super(medicationRepository, medicationMapper);
+        this.medicationRepository = medicationRepository;
+        this.medicationMapper = medicationMapper;
+    }
 
     /**
      * Obtener todos los medicamentos con paginación
@@ -33,7 +37,7 @@ public class MedicationService {
     public Page<MedicationResponse> getAllMedications(Pageable pageable) {
         log.info("Getting all medications with pagination: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
         
-        Page<MedicationDomain> medications = medicationRepository.findAllActive(pageable);
+    Page<MedicationDomain> medications = medicationRepository.findByIsActiveTrue(pageable);
         
         log.info("Found {} medications", medications.getTotalElements());
         
@@ -47,7 +51,7 @@ public class MedicationService {
     public Optional<MedicationResponse> getMedicationById(Integer id) {
         log.info("Getting medication by ID: {}", id);
         
-        Optional<MedicationDomain> medication = medicationRepository.findByIdAndActiveTrue(id);
+    Optional<MedicationDomain> medication = medicationRepository.findByIdAndIsActiveTrue(id);
         
         if (medication.isPresent()) {
             log.info("Found medication with ID: {}", id);
@@ -64,8 +68,8 @@ public class MedicationService {
     public MedicationResponse createMedication(MedicationRequest request) {
         log.info("Creating new medication with request data");
         
-        MedicationDomain medication = medicationMapper.toEntity(request);
-        MedicationDomain savedMedication = medicationRepository.save(medication);
+    MedicationDomain medication = medicationMapper.toEntity(request);
+    MedicationDomain savedMedication = medicationRepository.save(medication);
         
         log.info("Medication created successfully with ID: {}", savedMedication.getId());
         
@@ -79,7 +83,7 @@ public class MedicationService {
     public Optional<MedicationResponse> updateMedication(Integer id, MedicationRequest request) {
         log.info("Updating medication with ID: {}", id);
         
-        Optional<MedicationDomain> existingMedication = medicationRepository.findByIdAndActiveTrue(id);
+    Optional<MedicationDomain> existingMedication = medicationRepository.findByIdAndIsActiveTrue(id);
         
         if (!existingMedication.isPresent()) {
             log.warn("Medication not found with ID: {}", id);
@@ -103,11 +107,11 @@ public class MedicationService {
     public boolean deleteMedication(Integer id) {
         log.info("Deleting medication with ID: {}", id);
         
-        Optional<MedicationDomain> medication = medicationRepository.findByIdAndActiveTrue(id);
+    Optional<MedicationDomain> medication = medicationRepository.findByIdAndIsActiveTrue(id);
         
         if (medication.isPresent()) {
             MedicationDomain medicationEntity = medication.get();
-            medicationEntity.setActive(false);
+            medicationEntity.setIsActive(false);
             medicationRepository.save(medicationEntity);
             
             log.info("Medication deleted successfully with ID: {}", id);
@@ -125,28 +129,30 @@ public class MedicationService {
     public List<MedicationResponse> searchMedications(String searchTerm) {
         log.info("Searching medications with search term: {}", searchTerm);
         
-        List<MedicationDomain> medications = medicationRepository.searchMedications(searchTerm);
+        // Usar paginación con límite alto para simular lista completa
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 1000);
+        org.springframework.data.domain.Page<MedicationDomain> medicationsPage = medicationRepository.searchByTerm(searchTerm, pageable);
         
-        log.info("Search found {} medications", medications.size());
+        log.info("Search found {} medications", medicationsPage.getTotalElements());
         
-        return medicationMapper.toResponseList(medications);
+        return medicationMapper.toResponseList(medicationsPage.getContent());
     }
 
     /**
-     * Buscar medicamentos por criterios múltiples usando MedicationSearchRequest
+     * Buscar medicamentos por criterios múltiples - delegado a búsqueda simple
      */
     @Transactional(readOnly = true)
     public List<MedicationResponse> searchMedications(String name, String genericName, String medicationType, String manufacturer) {
         log.info("Searching medications with criteria - name: {}, genericName: {}, medicationType: {}, manufacturer: {}", 
                 name, genericName, medicationType, manufacturer);
         
-        // Usar el nuevo método de búsqueda por criterios específicos
-        List<MedicationDomain> medications = medicationRepository.searchMedicationsByCriteria(
-                name, genericName, medicationType, manufacturer);
+        // Usar el término más relevante para la búsqueda
+        String searchTerm = name != null ? name : 
+                           genericName != null ? genericName : 
+                           medicationType != null ? medicationType : 
+                           manufacturer != null ? manufacturer : "";
         
-        log.info("Search found {} medications", medications.size());
-        
-        return medicationMapper.toResponseList(medications);
+        return searchMedications(searchTerm);
     }
 
     /**
@@ -155,7 +161,7 @@ public class MedicationService {
     @Transactional(readOnly = true)
     public long countActiveMedications() {
         log.debug("Counting active medications");
-        return medicationRepository.countActiveMedications();
+        return medicationRepository.count();
     }
 
 }
