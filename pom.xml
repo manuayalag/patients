@@ -28,7 +28,7 @@
     </scm>
     <properties>
         <java.version>21</java.version>
-        <clinica.version>0.0.19-SNAPSHOT</clinica.version>
+        <clinica.version>0.0.21-SNAPSHOT</clinica.version>
     </properties>
     <dependencies>
         <!-- Spring Boot Starters -->
