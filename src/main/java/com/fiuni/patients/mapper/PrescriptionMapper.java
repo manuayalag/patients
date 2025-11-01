@@ -27,9 +27,7 @@ public class PrescriptionMapper implements GenericMapper<PrescriptionDomain, Pre
         PrescriptionDomain entity = new PrescriptionDomain();
         
         // Mapear campos básicos del PrescriptionRequest
-        if (dto.getPrescriptionNumber() != null) {
-            entity.setPrescriptionNumber(dto.getPrescriptionNumber());
-        }
+        // NOTE: `prescriptionNumber` removed; identification is by `id` only.
         if (dto.getPrescriptionDate() != null) {
             entity.setPrescriptionDate(dto.getPrescriptionDate());
         }
@@ -83,8 +81,6 @@ public class PrescriptionMapper implements GenericMapper<PrescriptionDomain, Pre
             dto.setLastModified(entity.getLastModified().atOffset(java.time.ZoneOffset.ofHours(-3)));
         }
         
-        // Mapear campos específicos de prescripción
-        dto.setPrescriptionNumber(entity.getPrescriptionNumber());
         dto.setPrescriptionDate(entity.getPrescriptionDate());
         dto.setDoctorName(entity.getDoctorName());
         dto.setDoctorLicense(entity.getDoctorLicense());
@@ -132,9 +128,6 @@ public class PrescriptionMapper implements GenericMapper<PrescriptionDomain, Pre
                             new com.fiuni.clinica.dto.generated.PrescriptionMedicationResponse();
                         
                         // Mapear campos básicos de PrescriptionMedication
-                        prescMedDto.setId(prescriptionMed.getId());
-                        prescMedDto.setDosage(prescriptionMed.getDosage());
-                        prescMedDto.setFrequency(prescriptionMed.getFrequency());
                         prescMedDto.setDuration(prescriptionMed.getDuration());
                         prescMedDto.setInstructions(prescriptionMed.getInstructions());
                         prescMedDto.setQuantity(prescriptionMed.getQuantity());
@@ -202,9 +195,6 @@ public class PrescriptionMapper implements GenericMapper<PrescriptionDomain, Pre
         log.debug("Updating PrescriptionDomain ID: {} with new data", entity.getId());
         
         // Solo actualizar campos que no son null en el request
-        if (dto.getPrescriptionNumber() != null) {
-            entity.setPrescriptionNumber(dto.getPrescriptionNumber());
-        }
         if (dto.getPrescriptionDate() != null) {
             entity.setPrescriptionDate(dto.getPrescriptionDate());
         }

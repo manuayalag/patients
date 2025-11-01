@@ -6,6 +6,8 @@ import com.fiuni.clinica.domain.patient.MedicationDomain;
 import com.fiuni.clinica.domain.patient.PrescriptionMedicationDomain;
 import com.fiuni.clinica.dto.generated.PrescriptionRequest;
 import com.fiuni.clinica.dto.generated.PrescriptionResponse;
+import com.fiuni.clinica.dto.generated.PrescriptionCreateRequest;
+import com.fiuni.clinica.dto.generated.PrescriptionMedicationRequest;
 import com.fiuni.clinica.dto.generated.MedicationResponse;
 import com.fiuni.clinica.dto.generated.PrescriptionMedicationRequest;
 import com.fiuni.clinica.dto.generated.PrescriptionMedicationResponse;
@@ -134,6 +136,75 @@ public class PrescriptionService extends AbstractBaseService<PrescriptionDomain,
         log.info("Prescription created successfully with ID: {} for patient ID: {}", 
                 savedPrescription.getId(), request.getPatientId());
         return prescriptionMapper.toDto(savedPrescription);
+    }
+
+    /**
+     * Crear nueva prescripción junto con sus medicamentos (cabecera + detalle) en una sola transacción
+     */
+    @Transactional
+    public PrescriptionResponse createPrescriptionWithMedications(PrescriptionCreateRequest request) {
+        log.info("Creating new prescription with medications for patient ID: {}", request.getPatientId());
+
+        if (request.getPatientId() == null) {
+            throw new RuntimeException("Patient ID is required to create a prescription");
+        }
+
+        Optional<PatientDomain> patient = patientRepository.findByIdAndIsActiveTrue(request.getPatientId());
+        if (!patient.isPresent()) {
+            throw new RuntimeException("Patient not found with ID: " + request.getPatientId());
+        }
+
+        // Convert header part using existing mapper via intermediate PrescriptionRequest
+        PrescriptionRequest header = new PrescriptionRequest();
+        header.setPatientId(request.getPatientId());
+        header.setPrescriptionDate(request.getPrescriptionDate());
+        header.setDoctorName(request.getDoctorName());
+        header.setDoctorLicense(request.getDoctorLicense());
+        header.setNotes(request.getNotes());
+        header.setValidUntil(request.getValidUntil());
+        header.setIsFilled(request.getIsFilled());
+
+        PrescriptionDomain prescription = prescriptionMapper.toEntity(header);
+        prescription.setPatient(patient.get());
+
+        // Prepare medications if present
+        if (request.getMedications() != null && !request.getMedications().isEmpty()) {
+            if (prescription.getMedications() == null) {
+                prescription.setMedications(new java.util.ArrayList<>());
+            }
+
+            for (PrescriptionMedicationRequest medReq : request.getMedications()) {
+                if (medReq == null || medReq.getMedicationId() == null) {
+                    log.warn("Skipping null medication entry or missing medicationId");
+                    continue;
+                }
+
+                Optional<MedicationDomain> medicationOpt = medicationRepository.findByIdAndIsActiveTrue(medReq.getMedicationId());
+                if (!medicationOpt.isPresent()) {
+                    throw new RuntimeException("Medication not found with ID: " + medReq.getMedicationId());
+                }
+
+                PrescriptionMedicationDomain prescMed = new PrescriptionMedicationDomain();
+                prescMed.setPrescription(prescription);
+                prescMed.setMedication(medicationOpt.get());
+                prescMed.setIsActive(true);
+                prescMed.setCreatedDate(java.time.LocalDateTime.now());
+                prescMed.setLastModified(java.time.LocalDateTime.now());
+
+                if (medReq.getDosage() != null) prescMed.setDosage(medReq.getDosage());
+                if (medReq.getFrequency() != null) prescMed.setFrequency(medReq.getFrequency());
+                if (medReq.getDuration() != null) prescMed.setDuration(medReq.getDuration());
+                if (medReq.getInstructions() != null) prescMed.setInstructions(medReq.getInstructions());
+                if (medReq.getQuantity() != null) prescMed.setQuantity(medReq.getQuantity());
+
+                prescription.getMedications().add(prescMed);
+            }
+        }
+
+        PrescriptionDomain saved = prescriptionRepository.save(prescription);
+
+        log.info("Prescription with medications created successfully with ID: {} for patient ID: {}", saved.getId(), request.getPatientId());
+        return prescriptionMapper.toDto(saved);
     }
 
     /**

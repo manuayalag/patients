@@ -1,6 +1,7 @@
 package com.fiuni.patients.controller;
 
 import com.fiuni.clinica.dto.generated.PrescriptionRequest;
+import com.fiuni.clinica.dto.generated.PrescriptionCreateRequest;
 import com.fiuni.clinica.dto.generated.PrescriptionResponse;
 import com.fiuni.clinica.api.PrescriptionsApi;
 import com.fiuni.clinica.dto.generated.PaginatedPrescriptionResponse;
@@ -41,13 +42,14 @@ public class PrescriptionController implements PrescriptionsApi {
     // ========================================
 
     @Override
-    public ResponseEntity<PrescriptionResponse> createPrescription(@Valid PrescriptionRequest prescriptionRequest) {
-        log.info("Request received to create prescription");
-        
+    public ResponseEntity<PrescriptionResponse> createPrescription(@Valid PrescriptionCreateRequest prescriptionCreateRequest) {
+        log.info("Request received to create prescription (create DTO)");
+
         try {
-            PrescriptionResponse prescription = prescriptionService.createPrescription(prescriptionRequest);
+            // Create prescription header + medications (if present) in a single transactional call
+            PrescriptionResponse prescription = prescriptionService.createPrescriptionWithMedications(prescriptionCreateRequest);
             log.info("Prescription created with ID: {}", prescription.getId());
-            
+
             return ResponseEntity.status(HttpStatus.CREATED).body(prescription);
         } catch (Exception e) {
             log.error("Error creating prescription", e);

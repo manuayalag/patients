@@ -23,9 +23,9 @@ public interface PrescriptionRepository extends IBaseRepository<PrescriptionDoma
      * Buscar prescripciones por término general con paginación
      */
     @Query("SELECT p FROM PrescriptionDomain p WHERE p.isActive = true AND " +
-           "(:searchTerm IS NULL OR :searchTerm = '' OR " +
-           "UPPER(p.prescriptionNumber) LIKE UPPER(CONCAT('%', :searchTerm, '%')) OR " +
-           "UPPER(p.doctorName) LIKE UPPER(CONCAT('%', :searchTerm, '%')) OR " +
-           "UPPER(p.doctorLicense) LIKE UPPER(CONCAT('%', :searchTerm, '%')))")
+        "(:searchTerm IS NULL OR :searchTerm = '' OR " +
+        "UPPER(p.doctorName) LIKE UPPER(CONCAT('%', :searchTerm, '%')) OR " +
+        "UPPER(p.doctorLicense) LIKE UPPER(CONCAT('%', :searchTerm, '%')) OR " +
+        "UPPER(p.notes) LIKE UPPER(CONCAT('%', :searchTerm, '%')))")
     Page<PrescriptionDomain> searchByTerm(@Param("searchTerm") String searchTerm, Pageable pageable);
 }
